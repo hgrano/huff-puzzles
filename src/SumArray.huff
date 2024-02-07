@@ -10,7 +10,42 @@
 
 #define function sumArray(uint256[]) payable returns(uint256)
 
+#define constant SUM_LOC = 0x20
+#define constant M_LOC = 0x00
 
 #define macro MAIN() = takes(0) returns(0) {
+    0x00 calldataload
+    0xE0 shr
+    __FUNC_SIG(sumArray)
+    eq
+    sumArray_def jumpi
+    0x00 0x00 revert
 
+    sumArray_def:
+        0x00 [SUM_LOC] mstore
+        0x04 calldataload   // offset - 0x04
+        0x04 add            // offset
+        dup1                // offset, offset
+        dup1                // offset, offset, offset
+        calldataload        // length, offset, offset
+        0x20 mul            // length * 32 bytes, offset, offset
+        add                 // length * 32 bytes + offset = M, offset
+        [M_LOC] mstore      // offset
+        0x20 add            // offset + 32 bytes
+
+    loop:
+        dup1                // current_offset, current_offset
+        [M_LOC] mload       // M, current_offset, current_offset
+        lt                  // M < current_offset, current_offset
+        ret jumpi           // current_offset
+        dup1                // current_offset, current_offset
+        calldataload        // arr @ current_offset, current_offset
+        [SUM_LOC] mload     // current_sum, arr @ current_offset, current_offset
+        add                 // new_sum, current_offset
+        [SUM_LOC] mstore    // current_offset
+        0x20 add            // new_offset
+        loop jump           // new_offset
+
+    ret:
+        0x20 [SUM_LOC] return
 }
