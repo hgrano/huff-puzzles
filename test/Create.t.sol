@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import {HuffDeployer} from "foundry-huff/HuffDeployer.sol";
 import {NonMatchingSelectorHelper} from "./test-utils/NonMatchingSelectorHelper.sol";
+import "forge-std/console.sol";
 
 interface Create {
     function makeContract() external returns (address);
@@ -20,10 +21,13 @@ contract CreateTest is Test, NonMatchingSelectorHelper {
         address newContract = create.makeContract();
         assertEq(newContract != address(0), true, "new contract cannot be address 0");
 
+        console.log("new contract address %s", newContract);
+        console.logBytes(newContract.code);
         (bool success, bytes memory data) = newContract.call("");
         require(success, "check return of new contract failed");
+        console.logBytes(data);
         assertEq(
-            abi.decode(data, (bytes32)),
+           abi.decode(data, (bytes32)),
             0x00000000000000000000000000000000000000000000000000000000000caffe,
             "expected new contract call to return 0xcaffe"
         );
