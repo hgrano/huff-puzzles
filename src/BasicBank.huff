@@ -12,5 +12,62 @@
 #define function withdraw(uint256) payable returns()
 
 #define macro MAIN() = takes(0) returns(0) {
+    calldatasize
+    iszero
+    receive_def jumpi
+    0x00 calldataload
+    0xE0 shr
+    dup1
+    __FUNC_SIG(balanceOf)
+    eq
+    balanceOf_def jumpi
+    __FUNC_SIG(withdraw)
+    eq
+    withdraw_def jumpi
 
+    rev:
+        0x00 0x00 revert
+
+    receive_def:
+        caller              // [caller]
+        0x00 mstore         // []
+        0x20 0x00 sha3      // [sha3(caller)]
+        dup1                // [sha3(caller), sha3(caller)]
+        sload               // [caller_deposited, sha3(caller)]
+        callvalue add       // [new_caller_deposited, sha3(caller)]
+        swap1               // [sha3(caller), new_caller_deposited]
+        sstore              // []
+        stop
+
+    balanceOf_def:
+        0x04 calldataload   // [address]
+        0x00 mstore         // []
+        0x20 0x00 sha3      // [sha3(address)]
+        sload               // [address_deposited]
+        0x00 mstore         // []
+        0x20 0x00 return    // []
+
+    withdraw_def:
+        caller              // [caller]
+        0x00 mstore         // []
+        0x20 0x00 sha3      // [sha3(caller)]
+        dup1                // [sha3(caller), sha3(caller)]
+        sload               // [caller_deposited, sha3(caller)]
+        dup1                // [caller_deposited, caller_deposited, sha3(caller)]
+        0x04 calldataload   // [withdraw_amount, caller_deposited, caller_deposited, sha3(caller)]
+        gt                  // [withdraw_amount > caller_deposited, caller_deposited, sha3(caller)]
+        rev jumpi           // [caller_deposited, sha3(caller)]
+        0x04 calldataload   // [withdraw_amount, caller_deposited, sha3(caller)]
+        swap1               // [caller_deposited, withdraw_amount, sha3(caller)]
+        sub                 // [new_caller_deposited, sha3(caller)]
+        swap1               // [sha3(caller), new_caller_deposited]
+        sstore              // []
+        0x00 0x00           // [retOffset, retSize]
+        0x00 0x00           // [argsOffset, argsSize, retOffset, retSize]
+        0x04 calldataload   // [value, argsOffset, argsSize, retOffset, retSize]
+        caller              // [address, value, argsOffset, argsSize, retOffset, retSize]
+        gas                 // [gas, address, value, argsOffset, argsSize, retOffset, retSize]
+        call                // [success_flag]
+        iszero              // [success_flag == 0]
+        rev jumpi           // []
 }
