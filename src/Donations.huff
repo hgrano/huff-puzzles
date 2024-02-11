@@ -20,19 +20,15 @@
 
     receive_def:
         caller              // [caller]
-        0x00 mstore         // []
-        0x20 0x00 sha3      // [sha3(caller)]
-        dup1                // [sha3(caller), sha3(caller)]
-        sload               // [caller_donated, sha3(caller)]
-        callvalue add       // [new_caller_donated, sha3(caller)]
-        swap1               // [sha3(caller), new_caller_donated]
+        dup1                // [caller, caller]
+        sload               // [caller_donated, caller]
+        callvalue add       // [new_caller_donated, caller]
+        swap1               // [caller, new_caller_donated]
         sstore              // []
         stop
 
     donated_def:
         caller              // [caller]
-        0x00 mstore         // []
-        0x20 0x00 sha3      // [sha3(caller)]
         sload               // [caller_donated]
         0x00 mstore         // []
         0x20 0x00 return    // []
