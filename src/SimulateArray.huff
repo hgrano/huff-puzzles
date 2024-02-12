@@ -15,15 +15,96 @@
  *  NOTICE: The contract should revert when an unrecognized function is called
  */
 
- #define function pushh(uint256 num) payable returns()
- #define function popp() payable returns()
- #define function read(uint256 index) payable returns(uint256)
- #define function length() payable returns(uint256)
- #define function write(uint256 index, uint256 num) payable returns()
+#define function pushh(uint256 num) payable returns()
+#define function popp() payable returns()
+#define function read(uint256 index) payable returns(uint256)
+#define function length() payable returns(uint256)
+#define function write(uint256 index, uint256 num) payable returns()
 
- #define error OutOfBounds()
- #define error ZeroArray()
+#define error OutOfBounds()
+#define error ZeroArray()
 
- #define macro MAIN() = takes(0) returns(0) {
-    
- }
+#define constant LAST_ELEMENT_SLOT = 0x00
+
+#define macro MAIN() = takes(0) returns(0) {
+    0x00 calldataload
+    0xE0 shr
+    dup1
+    __FUNC_SIG(pushh)
+    eq
+    pushh_def jumpi
+    dup1
+    __FUNC_SIG(popp)
+    eq
+    popp_def jumpi
+    dup1
+    __FUNC_SIG(read)
+    eq
+    read_def jumpi
+    dup1
+    __FUNC_SIG(length)
+    eq
+    length_def jumpi
+    __FUNC_SIG(write)
+    eq
+    write_def jumpi
+    0x00 0x00 revert
+
+    pushh_def:
+        0x04 calldataload                 // [new_element]
+        [LAST_ELEMENT_SLOT] sload         // [last_element_loc, new_element]
+        0x20 add                          // [new_last_element_loc, new_element]
+        dup1                              // [new_last_element_loc, new_last_element_loc, new_element]
+        [LAST_ELEMENT_SLOT] sstore        // [new_last_element_loc, new_element]
+        sstore                            // []
+        stop                              // []
+
+    popp_def:
+        0x20                              // [0x20]
+        [LAST_ELEMENT_SLOT] sload         // [last_element_loc, 0x20]
+        dup1                              // [last_element_loc, last_element_loc, 0x20]
+        iszero                            // [last_element_loc == 0, last_element_loc, 0x20]
+        zero_array_error jumpi            // [last_element_loc, 0x20]
+        sub                               // [new_last_element_loc]
+        [LAST_ELEMENT_SLOT] sstore        // []
+        stop
+
+    read_def:
+        0x04 calldataload                 // [index]
+        0x20 mul 0x20 add                 // [index_loc]
+        dup1                              // [index_loc, index_loc]
+        [LAST_ELEMENT_SLOT] sload         // [last_element_loc, index_loc, index_loc]
+        lt                                // [last_element_loc < index_loc, index_loc]
+        out_of_bounds_error jumpi         // [index_loc]
+        sload                             // [value]
+        0x00 mstore                       // []
+        0x20 0x00 return                  // []
+
+    length_def:
+        0x20                              // [0x20]
+        [LAST_ELEMENT_SLOT] sload         // [last_element_loc, 0x20]
+        div                               // [length]
+        0x00 mstore                       // []
+        0x20 0x00 return                  // []
+
+    write_def:
+        0x24 calldataload                 // [value]
+        0x04 calldataload                 // [index, value]
+        0x20 mul 0x20 add                 // [index_loc, value]
+        dup1                              // [index_loc, index_loc, value]
+        [LAST_ELEMENT_SLOT] sload         // [last_element_loc, index_loc, index_loc, value]
+        lt                                // [last_element_loc < index_loc, index_loc, value]
+        out_of_bounds_error jumpi         // [index_loc, value]
+        sstore                            // []
+        stop                              // []
+
+    zero_array_error:
+        __ERROR(ZeroArray)
+        0x00 mstore
+        0x04 0x00 revert
+
+    out_of_bounds_error:
+        __ERROR(OutOfBounds)
+        0x00 mstore
+        0x04 0x00 revert
+}
