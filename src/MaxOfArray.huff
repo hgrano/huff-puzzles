@@ -9,6 +9,56 @@
 
 #define function maxOfArray(uint256[]) payable returns(uint256)
 
+#define constant MAX_LOC = 0x20
+#define constant MAX_BYTE_OFFSET_LOC = 0x00
+
 #define macro MAIN() = takes(0) returns(0) {
-   
+    0x00 calldataload
+    0xE0 shr
+    __FUNC_SIG(maxOfArray)
+    eq
+    sum_def jumpi
+
+    rev:
+        0x00 0x00 revert
+
+    sum_def:
+        0x00 [MAX_LOC] mstore
+        0x04 calldataload              // offset - 0x04
+        0x04 add                       // offset
+        dup1                           // offset, offset
+        dup1                           // offset, offset, offset
+        calldataload                   // length, offset, offset
+        dup1                           // length, length, offset, offset
+        iszero                         // length == 0, length, offset, offset
+        rev jumpi                      // length, offset, offset
+        0x20 mul                       // length * 32 bytes, offset, offset
+        add                            // last_byte_offset, offset
+        [MAX_BYTE_OFFSET_LOC] mstore   // offset
+        0x20 add                       // start
+
+    loop:
+        dup1                         // current_offset, current_offset
+        [MAX_BYTE_OFFSET_LOC] mload  // last_byte_offset, current_offset, current_offset
+        lt                           // last_byte_offset < current_offset, current_offset
+        ret jumpi                    // current_offset
+        dup1                         // current_offset, current_offset
+        calldataload                 // current_val, current_offset
+        dup1                         // current_val, current_val, current_offset
+        [MAX_LOC] mload              // max, current_val, current_val, current_offset
+        lt                           // max < current_val, current_val, current_offset
+        update_max jumpi             // current_val, current_offset
+        pop                          // current_offset
+
+    end_loop:
+        0x20 add                     // next_offset
+        loop jump                    // next_offset
+
+    update_max:                     // current_val, current_offset
+        [MAX_LOC] mstore            // current_offset
+        end_loop jump               // current_offset
+
+    ret:
+        0x20 [MAX_LOC] return
+
 }

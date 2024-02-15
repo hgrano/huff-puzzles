@@ -10,9 +10,62 @@
  *  NOTICE: The contract should revert when an unrecognized function is called
  */
 
- #define function distribute(address[]) payable returns()
+#define function distribute(address[]) payable returns()
+#define constant LAST_ARRAY_LOC = 0x00
+#define constant CURRENT_LOC = 0x20
+#define constant DISTRIBUTION_LOC = 0x40
 
 
- #define macro MAIN() = takes(0) returns(0) {
-   
- }
+#define macro MAIN() = takes(0) returns(0) {
+    0x00 calldataload
+    0xE0 shr
+    __FUNC_SIG(distribute)
+    eq
+    distribute_def jumpi
+
+    rev:
+        0x00 0x00 revert
+
+    distribute_def:
+        0x04 calldataload         // [offset]
+        0x04 add                  // [array_loc]
+        dup1                      // [array_loc, array_loc]
+        [CURRENT_LOC] mstore      // [array_loc]
+        dup1                      // [array_loc, array_loc]
+        calldataload              // [length, array_loc]
+        dup1                      // [length, length, array_loc]
+        iszero                    // [length == 0, length, array_loc]
+        rev jumpi                 // [length, array_loc]
+        dup1                      // [length, length, array_loc]
+        callvalue                 // [callvalue, length, length, array_loc]
+        div                       // [distribution, length, array_loc]
+        [DISTRIBUTION_LOC] mstore // [length, array_loc]
+        0x20 mul                  // [length * 32 bytes, array_loc]
+        add                       // [last_loc]
+        [LAST_ARRAY_LOC] mstore   // []
+
+    loop:
+        0x00 0x00                // [retOffset, retSize]
+        0x00 0x00                // [argsOffset, argsSize, retOffset, retSize]
+        [DISTRIBUTION_LOC] mload // [value, argsOffset, argsSize, retOffset, retSize]
+
+        // BEGIN address calculation
+        [CURRENT_LOC] mload      // [prev_loc, ...]
+        0x20 add                 // [current_loc, ...]
+        dup1                     // [current_loc, current_loc, ...]
+        [LAST_ARRAY_LOC] mload   // [last_loc, current_loc, current_loc, ...]
+        lt                       // [last_loc < current_loc, current_loc, ...]
+        ret jumpi                // [current_loc, ...]
+        dup1                     // [current_loc, current_loc...]
+        [CURRENT_LOC] mstore     // [current_loc, ...]
+        calldataload             // [address, ...]
+        // END address calculation
+
+        gas                      // [gas, address, value, argsOffset, argsSize, retOffset, retSize]
+        call                     // [success_flag]
+        loop jumpi               // []
+        0x00 0x00 revert         // []
+
+    ret:
+        stop
+}

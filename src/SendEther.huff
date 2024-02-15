@@ -8,9 +8,22 @@
  *  NOTICE: The contract should revert when an unrecognized function is called
  */
 
- #define function sendEther(address) payable returns()
+#define function sendEther(address) payable returns()
 
 
- #define macro MAIN() = takes(0) returns(0) {
-    
- }
+#define macro MAIN() = takes(0) returns(0) {
+    0x00 calldataload
+    0xE0 shr
+    __FUNC_SIG(sendEther)
+    eq
+    sendEther_def jumpi
+    0x00 0x00 revert
+
+    sendEther_def:
+        0x00 0x00                // [retOffset, retSize]
+        0x00 0x00                // [argsOffset, argsSize, retOffset, retSize]
+        callvalue                // [value, argsOffset, argsSize, retOffset, retSize]
+        0x04 calldataload        // [address, value, argsOffset, argsSize, retOffset, retSize]
+        gas                      // [gas, address, value, argsOffset, argsSize, retOffset, retSize]
+        call                     // [success_flag]
+}
